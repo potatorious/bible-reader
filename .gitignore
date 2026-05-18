@@ -1,0 +1,6 @@
+*.zip
+*.asc
+keys.asc
+signature.txt.asc
+.DS_Store
+Thumbs.db
