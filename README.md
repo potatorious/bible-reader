@@ -33,13 +33,7 @@
 
 ## 실행
 
-`index.html`을 브라우저에서 열면 됩니다.
-
-```text
-file:///C:/project/bible-reader/index.html
-```
-
-또는 파일 탐색기에서 `C:\project\bible-reader\index.html`을 더블클릭해도 됩니다.
+저장소를 내려받은 뒤 `index.html`을 브라우저에서 열면 됩니다. 파일 탐색기에서 `index.html`을 더블클릭해도 됩니다.
 
 ## 파일 구조
 
