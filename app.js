@@ -9,38 +9,24 @@ const state = {
   bookId: "JHN",
   chapter: 3,
   verse: 16,
-  fontScale: 1,
-  theme: "light",
-  lineHeight: "normal",
-  textWidth: "comfortable",
-  letterSpacing: "normal",
-  speechRate: 1,
-  isSpeaking: false
+  fontScale: 1
 };
 
 const elements = {
+  bookName: document.querySelector("#book-name"),
   reference: document.querySelector("#reference"),
-  progress: document.querySelector("#progress"),
-  progressBar: document.querySelector("#progress-bar"),
   verseText: document.querySelector("#verse-text"),
   prevButton: document.querySelector("#prev-button"),
   nextButton: document.querySelector("#next-button"),
   smallerButton: document.querySelector("#smaller-button"),
   largerButton: document.querySelector("#larger-button"),
-  settingsButton: document.querySelector("#settings-button"),
-  settingsPanel: document.querySelector("#settings-panel"),
   translationSelect: document.querySelector("#translation-select"),
   bookSelect: document.querySelector("#book-select"),
   chapterSelect: document.querySelector("#chapter-select"),
   verseSelect: document.querySelector("#verse-select"),
-  themeSelect: document.querySelector("#theme-select"),
-  lineHeightSelect: document.querySelector("#line-height-select"),
-  textWidthSelect: document.querySelector("#text-width-select"),
-  letterSpacingSelect: document.querySelector("#letter-spacing-select"),
-  speechRateSelect: document.querySelector("#speech-rate-select"),
-  speakButton: document.querySelector("#speak-button"),
-  stopSpeechButton: document.querySelector("#stop-speech-button"),
-  speechStatus: document.querySelector("#speech-status")
+  playButton: document.querySelector("#play-button"),
+  pauseButton: document.querySelector("#pause-button"),
+  stopButton: document.querySelector("#stop-button")
 };
 
 Object.entries(elements).forEach(([name, element]) => {
@@ -82,7 +68,11 @@ function allRefsForTranslation(translation) {
 const commonRefs = allRefsForTranslation("kor").filter((ref) => hasVerse("web", ref));
 const commonRefKeys = new Set(commonRefs.map(refKey));
 const canSpeak = "speechSynthesis" in window && "SpeechSynthesisUtterance" in window;
+const baseFontSize = 80;
 let cachedVoices = [];
+let isSpeaking = false;
+let speechRunId = 0;
+let pendingStopTimer = null;
 
 function getVerseText() {
   return getChapterVerses()[state.verse] || "";
@@ -92,8 +82,8 @@ function getBookName(book = getBook()) {
   return state.translation === "kor" ? book.koName : book.enName;
 }
 
-function referenceFor() {
-  return `${getBookName()} ${state.chapter}:${state.verse}`;
+function referenceForSpeech() {
+  return `${getBookName()} ${state.chapter}장 ${state.verse}절`;
 }
 
 function availableBooks() {
@@ -119,12 +109,8 @@ function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
 }
 
-function formatNumber(value) {
-  return new Intl.NumberFormat("ko-KR").format(value);
-}
-
-function currentFlatIndex(refs = commonRefs) {
-  return refs.findIndex(
+function currentFlatIndex() {
+  return commonRefs.findIndex(
     (ref) => ref.bookId === state.bookId && ref.chapter === state.chapter && ref.verse === state.verse
   );
 }
@@ -170,19 +156,6 @@ function syncSelectors() {
   );
 }
 
-function syncReadingSettings() {
-  document.body.dataset.theme = state.theme;
-  document.body.dataset.lineHeight = state.lineHeight;
-  document.body.dataset.textWidth = state.textWidth;
-  document.body.dataset.letterSpacing = state.letterSpacing;
-
-  elements.themeSelect.value = state.theme;
-  elements.lineHeightSelect.value = state.lineHeight;
-  elements.textWidthSelect.value = state.textWidth;
-  elements.letterSpacingSelect.value = state.letterSpacing;
-  elements.speechRateSelect.value = String(state.speechRate);
-}
-
 function refreshVoiceCache() {
   cachedVoices = canSpeak ? window.speechSynthesis.getVoices() : [];
 }
@@ -196,50 +169,98 @@ function preferredVoice() {
   );
 }
 
+function clearPendingStop({ cancelNow = false } = {}) {
+  if (!pendingStopTimer) {
+    return;
+  }
+
+  window.clearTimeout(pendingStopTimer);
+  pendingStopTimer = null;
+
+  if (cancelNow) {
+    window.speechSynthesis.cancel();
+  }
+}
+
 function stopSpeech() {
   if (!canSpeak) {
     return;
   }
 
-  window.speechSynthesis.cancel();
-  state.isSpeaking = false;
-  elements.speakButton.textContent = "현재 절 읽기";
-  elements.speechStatus.textContent = "읽기 중지됨";
-}
+  speechRunId += 1;
+  clearPendingStop();
 
-function speakCurrentVerse() {
-  if (!canSpeak) {
-    elements.speechStatus.textContent = "이 브라우저는 음성 읽기를 지원하지 않습니다.";
+  const wasPaused = window.speechSynthesis.paused;
+  isSpeaking = false;
+
+  if (wasPaused) {
+    window.speechSynthesis.resume();
+    pendingStopTimer = window.setTimeout(() => {
+      window.speechSynthesis.cancel();
+      pendingStopTimer = null;
+    }, 0);
     return;
   }
 
   window.speechSynthesis.cancel();
+}
 
-  const utterance = new SpeechSynthesisUtterance(`${referenceFor()}. ${getVerseText()}`);
+function buildUtterance(runId) {
+  const utterance = new SpeechSynthesisUtterance(`${referenceForSpeech()}. ${getVerseText()}`);
   utterance.lang = state.translation === "kor" ? "ko-KR" : "en-US";
-  utterance.rate = state.speechRate;
+  utterance.rate = 1;
   utterance.pitch = 1;
   utterance.voice = preferredVoice();
 
   utterance.onstart = () => {
-    state.isSpeaking = true;
-    elements.speakButton.textContent = "다시 읽기";
-    elements.speechStatus.textContent = "읽는 중";
+    if (runId === speechRunId) {
+      isSpeaking = true;
+    }
   };
 
   utterance.onend = () => {
-    state.isSpeaking = false;
-    elements.speakButton.textContent = "현재 절 읽기";
-    elements.speechStatus.textContent = "읽기 완료";
+    if (runId === speechRunId) {
+      isSpeaking = false;
+    }
   };
 
   utterance.onerror = () => {
-    state.isSpeaking = false;
-    elements.speakButton.textContent = "현재 절 읽기";
-    elements.speechStatus.textContent = "음성 읽기를 시작하지 못했습니다.";
+    if (runId === speechRunId) {
+      isSpeaking = false;
+    }
   };
 
-  window.speechSynthesis.speak(utterance);
+  return utterance;
+}
+
+function playSpeech() {
+  if (!canSpeak) {
+    return;
+  }
+
+  clearPendingStop({ cancelNow: true });
+
+  if (window.speechSynthesis.paused) {
+    window.speechSynthesis.resume();
+    isSpeaking = true;
+    return;
+  }
+
+  if (isSpeaking) {
+    stopSpeech();
+  }
+
+  speechRunId += 1;
+  window.speechSynthesis.speak(buildUtterance(speechRunId));
+}
+
+function pauseSpeech() {
+  if (!canSpeak || window.speechSynthesis.paused) {
+    return;
+  }
+
+  window.speechSynthesis.pause();
+  isSpeaking = false;
 }
 
 function normalizeCurrentReference() {
@@ -262,19 +283,11 @@ function normalizeCurrentReference() {
 function renderPassage() {
   normalizeCurrentReference();
   syncSelectors();
-  syncReadingSettings();
 
-  const index = currentFlatIndex();
-  const current = index + 1;
-  const total = commonRefs.length;
-  const percent = ((current / total) * 100).toFixed(2);
-
-  elements.reference.textContent = referenceFor();
-  elements.progress.textContent = `${formatNumber(current)} / ${formatNumber(total)} · ${percent}%`;
-  elements.progressBar.style.width = `${percent}%`;
+  elements.bookName.textContent = getBookName();
+  elements.reference.textContent = `${state.chapter}장 ${state.verse}절`;
   elements.verseText.textContent = getVerseText();
-
-  document.documentElement.style.setProperty("--reader-scale", state.fontScale);
+  elements.verseText.style.fontSize = `${baseFontSize * state.fontScale}px`;
 }
 
 function setReference(ref) {
@@ -296,18 +309,11 @@ function setFontScale(delta) {
   renderPassage();
 }
 
-function toggleSettingsPanel() {
-  const isOpen = elements.settingsPanel.hidden;
-  elements.settingsPanel.hidden = !isOpen;
-  elements.settingsButton.setAttribute("aria-expanded", String(isOpen));
-}
-
 function bindEvents() {
   elements.prevButton.addEventListener("click", () => move(-1));
   elements.nextButton.addEventListener("click", () => move(1));
   elements.smallerButton.addEventListener("click", () => setFontScale(-0.1));
   elements.largerButton.addEventListener("click", () => setFontScale(0.1));
-  elements.settingsButton.addEventListener("click", toggleSettingsPanel);
 
   elements.translationSelect.addEventListener("change", (event) => {
     state.translation = event.target.value;
@@ -332,33 +338,9 @@ function bindEvents() {
     renderPassage();
   });
 
-  elements.themeSelect.addEventListener("change", (event) => {
-    state.theme = event.target.value;
-    renderPassage();
-  });
-
-  elements.lineHeightSelect.addEventListener("change", (event) => {
-    state.lineHeight = event.target.value;
-    renderPassage();
-  });
-
-  elements.textWidthSelect.addEventListener("change", (event) => {
-    state.textWidth = event.target.value;
-    renderPassage();
-  });
-
-  elements.letterSpacingSelect.addEventListener("change", (event) => {
-    state.letterSpacing = event.target.value;
-    renderPassage();
-  });
-
-  elements.speechRateSelect.addEventListener("change", (event) => {
-    state.speechRate = Number(event.target.value);
-    renderPassage();
-  });
-
-  elements.speakButton.addEventListener("click", speakCurrentVerse);
-  elements.stopSpeechButton.addEventListener("click", stopSpeech);
+  elements.playButton.addEventListener("click", playSpeech);
+  elements.pauseButton.addEventListener("click", pauseSpeech);
+  elements.stopButton.addEventListener("click", stopSpeech);
 
   window.addEventListener("keydown", (event) => {
     if (event.key === "ArrowLeft") {
@@ -373,9 +355,9 @@ function bindEvents() {
 
 function init() {
   if (!canSpeak) {
-    elements.speakButton.disabled = true;
-    elements.stopSpeechButton.disabled = true;
-    elements.speechStatus.textContent = "이 브라우저는 음성 읽기를 지원하지 않습니다.";
+    elements.playButton.disabled = true;
+    elements.pauseButton.disabled = true;
+    elements.stopButton.disabled = true;
   } else {
     refreshVoiceCache();
     window.speechSynthesis.addEventListener("voiceschanged", refreshVoiceCache);

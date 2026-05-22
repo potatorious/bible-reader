@@ -6,91 +6,36 @@
     <title>성경 읽기</title>
     <link rel="stylesheet" href="./styles.css" />
   </head>
-  <body data-theme="light" data-line-height="normal" data-text-width="comfortable" data-letter-spacing="normal">
-    <main class="app-shell">
-      <section class="reader-layout">
-        <section class="reader-panel" aria-label="성경 본문">
-          <div class="reference-row">
-            <div>
-              <p class="reference-kicker">현재 본문</p>
-              <p class="reference" id="reference">요한복음 3:16</p>
-            </div>
-            <div class="progress-wrap" aria-label="읽기 진행률">
-              <p class="progress" id="progress">1 / 30,984 · 0.00%</p>
-              <div class="progress-track" aria-hidden="true">
-                <span id="progress-bar"></span>
-              </div>
-            </div>
+  <body>
+    <main class="reader-layout">
+      <section class="reader-panel" aria-label="성경 본문">
+        <header>
+          <div>
+            <p class="book-name" id="book-name">요한복음</p>
+            <p class="reference" id="reference">3장 16절</p>
           </div>
+        </header>
 
-          <article class="verse-window">
-            <p class="verse-text" id="verse-text"></p>
-          </article>
-        </section>
+        <article class="verse-window">
+          <p class="verse-text" id="verse-text"></p>
+        </article>
+      </section>
 
-        <section class="quick-jump panel-card" aria-label="성경 선택">
-          <label for="translation-select">번역</label>
-          <select id="translation-select"></select>
+      <nav class="read-controls" aria-label="읽기 조작">
+        <button id="prev-button" type="button" aria-label="이전">&lt;</button>
+        <button id="next-button" type="button" aria-label="다음">&gt;</button>
+        <button id="smaller-button" type="button" aria-label="글자 작게">가-</button>
+        <button id="larger-button" type="button" aria-label="글자 크게">가+</button>
+        <button id="play-button" type="button" aria-label="음성 재생">재생</button>
+        <button id="pause-button" type="button" aria-label="음성 일시정지">일시정지</button>
+        <button id="stop-button" type="button" aria-label="음성 정지">정지</button>
+      </nav>
 
-          <label for="book-select">성경</label>
-          <select id="book-select"></select>
-
-          <label for="chapter-select">장</label>
-          <select id="chapter-select"></select>
-
-          <label for="verse-select">절</label>
-          <select id="verse-select"></select>
-        </section>
-
-        <section class="settings-panel panel-card" id="settings-panel" aria-label="읽기 설정" hidden>
-          <label for="theme-select">화면</label>
-          <select id="theme-select">
-            <option value="light">밝은 화면</option>
-            <option value="dark">어두운 화면</option>
-            <option value="soft">부드러운 화면</option>
-          </select>
-
-          <label for="line-height-select">줄간격</label>
-          <select id="line-height-select">
-            <option value="normal">보통</option>
-            <option value="wide">넓게</option>
-            <option value="extra">아주 넓게</option>
-          </select>
-
-          <label for="text-width-select">본문 폭</label>
-          <select id="text-width-select">
-            <option value="comfortable">읽기 좋게</option>
-            <option value="narrow">좁게</option>
-            <option value="wide">넓게</option>
-          </select>
-
-          <label for="letter-spacing-select">자간</label>
-          <select id="letter-spacing-select">
-            <option value="normal">기본</option>
-            <option value="wide">넓게</option>
-          </select>
-
-          <label for="speech-rate-select">읽기 속도</label>
-          <select id="speech-rate-select">
-            <option value="0.45">느리게</option>
-            <option value="1" selected>보통</option>
-            <option value="1.35">빠르게</option>
-          </select>
-
-          <div class="speech-actions">
-            <button class="settings-action" id="speak-button" type="button">현재 절 읽기</button>
-            <button class="settings-action" id="stop-speech-button" type="button">읽기 중지</button>
-          </div>
-          <p class="speech-status" id="speech-status" aria-live="polite">음성 준비됨</p>
-        </section>
-
-        <nav class="control-panel" aria-label="읽기 조작">
-          <button class="control-button nav-button" id="prev-button" type="button">이전</button>
-          <button class="control-button nav-button primary-action" id="next-button" type="button">다음</button>
-          <button class="control-button" id="smaller-button" type="button">글자 작게</button>
-          <button class="control-button" id="larger-button" type="button">글자 크게</button>
-          <button class="control-button" id="settings-button" type="button" aria-expanded="false" aria-controls="settings-panel">읽기 설정</button>
-        </nav>
+      <section class="passage-picker" aria-label="본문 이동">
+        <select id="translation-select"></select>
+        <select id="book-select"></select>
+        <select id="chapter-select"></select>
+        <select id="verse-select"></select>
       </section>
     </main>
 
