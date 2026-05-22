@@ -7,21 +7,23 @@
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <main class="reader-layout">
+    <main class="reader-layout" aria-labelledby="app-title">
+      <h1 id="app-title">성경 읽기</h1>
+
       <section class="reader-panel" aria-label="성경 본문">
         <header>
           <div>
-            <p class="book-name" id="book-name">요한복음</p>
-            <p class="reference" id="reference">3장 16절</p>
+            <p class="book-name" id="book-name">창세기</p>
+            <p class="reference" id="reference">1장 1절</p>
           </div>
         </header>
 
-        <article class="verse-window">
+        <article class="verse-window" id="passage-region" aria-live="polite" aria-atomic="true" lang="ko">
           <p class="verse-text" id="verse-text"></p>
         </article>
       </section>
 
-      <nav class="read-controls" aria-label="읽기 조작">
+      <section class="read-controls" aria-label="읽기 조작">
         <button id="prev-button" type="button" aria-label="이전">&lt;</button>
         <button id="next-button" type="button" aria-label="다음">&gt;</button>
         <button id="smaller-button" type="button" aria-label="글자 작게">가-</button>
@@ -29,13 +31,13 @@
         <button id="play-button" type="button" aria-label="음성 재생">재생</button>
         <button id="pause-button" type="button" aria-label="음성 일시정지">일시정지</button>
         <button id="stop-button" type="button" aria-label="음성 정지">정지</button>
-      </nav>
+      </section>
 
       <section class="passage-picker" aria-label="본문 이동">
-        <select id="translation-select"></select>
-        <select id="book-select"></select>
-        <select id="chapter-select"></select>
-        <select id="verse-select"></select>
+        <select id="version-select" aria-label="성경본 선택"></select>
+        <select id="book-select" aria-label="책 선택"></select>
+        <select id="chapter-select" aria-label="장 선택"></select>
+        <select id="verse-select" aria-label="절 선택"></select>
       </section>
     </main>
 

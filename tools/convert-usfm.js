@@ -96,7 +96,7 @@ function parseUsfm(filePath) {
   const source = fs.readFileSync(filePath, "utf8").replace(/\r\n/g, "\n");
   const chapters = {};
   let currentChapter = null;
-  let currentVerse = null;
+  let currentVerseEntry = null;
 
   const tokens = source.split(/(?=\\c\s+\d+|\\v\s+\d+)/g);
 
@@ -104,39 +104,35 @@ function parseUsfm(filePath) {
     const chapterMatch = token.match(/^\\c\s+(\d+)/);
     if (chapterMatch) {
       currentChapter = chapterMatch[1];
-      currentVerse = null;
+      currentVerseEntry = null;
       chapters[currentChapter] ||= [];
       continue;
     }
 
-    const verseMatch = token.match(/^\\v\s+(\d+)([\s\S]*)/);
+    const verseMatch = token.match(/^\\v\s+([^\s]+)([\s\S]*)/);
     if (verseMatch && currentChapter) {
-      currentVerse = Number(verseMatch[1]);
+      const number = verseMatch[1];
       const text = stripUsfm(verseMatch[2]);
 
       if (text) {
-        chapters[currentChapter][currentVerse] = text;
+        currentVerseEntry = { number, text };
+        chapters[currentChapter].push(currentVerseEntry);
       }
       continue;
     }
 
-    if (currentChapter && currentVerse) {
+    if (currentChapter && currentVerseEntry) {
       const extra = stripUsfm(token);
       if (extra) {
-        chapters[currentChapter][currentVerse] = `${chapters[currentChapter][currentVerse]} ${extra}`.trim();
+        currentVerseEntry.text = `${currentVerseEntry.text} ${extra}`.trim();
       }
     }
   }
 
-  return Object.fromEntries(
-    Object.entries(chapters).map(([chapter, verses]) => [
-      chapter,
-      verses.map((verse) => verse || null)
-    ])
-  );
+  return chapters;
 }
 
-function parseTranslation(dirName) {
+function parseVersion(dirName) {
   const dir = path.join(root, dirName);
   return Object.fromEntries(
     canonicalBooks.map(([id]) => {
@@ -149,8 +145,20 @@ function parseTranslation(dirName) {
   );
 }
 
+function countVerses(books) {
+  return Object.values(books).reduce(
+    (sum, chapters) => sum + Object.values(chapters).reduce((chapterSum, verses) => chapterSum + verses.length, 0),
+    0
+  );
+}
+
+const text = {
+  kor: parseVersion("kor_usfm"),
+  web: parseVersion("eng-web_usfm")
+};
+
 const data = {
-  translations: {
+  versions: {
     kor: {
       label: "한국어 성경 1910",
       language: "ko",
@@ -163,23 +171,14 @@ const data = {
     }
   },
   books: canonicalBooks.map(([id, koName, enName]) => ({ id, koName, enName })),
-  text: {
-    kor: parseTranslation("kor_usfm"),
-    web: parseTranslation("eng-web_usfm")
-  }
+  text
 };
 
 const outPath = path.join(root, "bible-data.js");
-fs.writeFileSync(outPath, `window.BIBLE_DATA = ${JSON.stringify(data)};\n`, "utf8");
+fs.writeFileSync(outPath, `window.BIBLE_DATA = ${JSON.stringify(data, null, 2)};\n`, "utf8");
 
 const verseCounts = Object.fromEntries(
-  Object.entries(data.text).map(([translation, books]) => [
-    translation,
-    Object.values(books).reduce(
-      (sum, chapters) => sum + Object.values(chapters).reduce((chapterSum, verses) => chapterSum + verses.filter(Boolean).length, 0),
-      0
-    )
-  ])
+  Object.entries(data.text).map(([version, books]) => [version, countVerses(books)])
 );
 
 console.log({
